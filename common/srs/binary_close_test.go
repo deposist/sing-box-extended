@@ -93,3 +93,31 @@ func TestReadPropagatesCloseErrorWhenParseSucceeds(t *testing.T) {
 	require.NotNil(t, closer)
 	require.Equal(t, 1, closer.closes)
 }
+
+func TestReadRejectsCorruptOrTruncatedTrailer(t *testing.T) {
+	var buffer bytes.Buffer
+	require.NoError(t, Write(&buffer, option.PlainRuleSet{}, C.RuleSetVersionCurrent))
+	valid := buffer.Bytes()
+
+	corrupt := append([]byte(nil), valid...)
+	corrupt[len(corrupt)-1] ^= 0xff
+	_, err := Read(bytes.NewReader(corrupt), false)
+	require.Error(t, err)
+
+	_, err = Read(bytes.NewReader(valid[:len(valid)-1]), false)
+	require.Error(t, err)
+}
+
+func TestReadRejectsTrailingRuleSetData(t *testing.T) {
+	var compressed bytes.Buffer
+	compressWriter := zlib.NewWriter(&compressed)
+	_, err := compressWriter.Write([]byte{0, 1})
+	require.NoError(t, err)
+	require.NoError(t, compressWriter.Close())
+
+	content := append([]byte(nil), MagicBytes[:]...)
+	content = append(content, C.RuleSetVersionCurrent)
+	content = append(content, compressed.Bytes()...)
+	_, err = Read(bytes.NewReader(content), false)
+	require.ErrorContains(t, err, "unexpected trailing rule-set data")
+}

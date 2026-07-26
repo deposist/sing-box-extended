@@ -104,6 +104,13 @@ func read(
 			return
 		}
 	}
+	_, err = bReader.ReadByte()
+	if err == nil {
+		return ruleSetCompat, E.New("unexpected trailing rule-set data")
+	}
+	if err == io.EOF {
+		err = nil
+	}
 	return
 }
 
