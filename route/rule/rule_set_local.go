@@ -116,8 +116,12 @@ func (s *LocalRuleSet) reloadFile(path string) error {
 		}
 		defer setFile.Close()
 		ruleSet, err = srs.Read(setFile, false)
+		closeErr := setFile.Close()
 		if err != nil {
 			return err
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 	default:
 		return E.New("unknown rule-set format: ", s.fileFormat)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
@@ -303,6 +304,20 @@ func (e *Endpoint) Close() error {
 		e.device = nil
 	}
 	return nil
+}
+
+func (e *Endpoint) IpcGet() (string, error) {
+	if e.device == nil {
+		return "", errors.New("wireguard device is not started")
+	}
+	return e.device.IpcGet()
+}
+
+func (e *Endpoint) IpcSet(config string) error {
+	if e.device == nil {
+		return errors.New("wireguard device is not started")
+	}
+	return e.device.IpcSet(config)
 }
 
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {

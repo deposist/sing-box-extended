@@ -2,6 +2,7 @@ package wireguard
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/netip"
 	"sync/atomic"
@@ -165,6 +166,20 @@ func (w *Endpoint) Start(stage adapter.StartStage) error {
 func (w *Endpoint) Close() error {
 	w.started.Store(false)
 	return w.endpoint.Close()
+}
+
+func (w *Endpoint) IpcGet() (string, error) {
+	if w.endpoint == nil {
+		return "", errors.New("wireguard endpoint is not initialized")
+	}
+	return w.endpoint.IpcGet()
+}
+
+func (w *Endpoint) IpcSet(config string) error {
+	if w.endpoint == nil {
+		return errors.New("wireguard endpoint is not initialized")
+	}
+	return w.endpoint.IpcSet(config)
 }
 
 func (w *Endpoint) PrepareConnection(network string, source M.Socksaddr, destination M.Socksaddr, routeContext tun.DirectRouteContext, timeout time.Duration) (tun.DirectRouteDestination, error) {

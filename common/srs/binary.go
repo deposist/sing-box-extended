@@ -50,6 +50,19 @@ const (
 )
 
 func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetCompat, err error) {
+	return read(reader, recover, zlib.NewReader)
+}
+
+// read decodes a binary rule-set, decompressing it with newDecompressor.
+//
+// The decompressor is always closed before returning. An earlier parse error
+// takes precedence over a close error; a close error is reported only when
+// parsing otherwise succeeded. The caller-owned input reader is never closed.
+func read(
+	reader io.Reader,
+	recover bool,
+	newDecompressor func(io.Reader) (io.ReadCloser, error),
+) (ruleSetCompat option.PlainRuleSetCompat, err error) {
 	var magicBytes [3]byte
 	_, err = io.ReadFull(reader, magicBytes[:])
 	if err != nil {
@@ -67,10 +80,16 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 	if version > C.RuleSetVersionCurrent {
 		return ruleSetCompat, E.New("unsupported version: ", version)
 	}
-	compressReader, err := zlib.NewReader(reader)
+	compressReader, err := newDecompressor(reader)
 	if err != nil {
 		return
 	}
+	defer func() {
+		closeErr := compressReader.Close()
+		if err == nil && closeErr != nil {
+			err = closeErr
+		}
+	}()
 	bReader := bufio.NewReader(compressReader)
 	length, err := binary.ReadUvarint(bReader)
 	if err != nil {
@@ -84,6 +103,13 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 			err = E.Cause(err, "read rule[", i, "]")
 			return
 		}
+	}
+	_, err = bReader.ReadByte()
+	if err == nil {
+		return ruleSetCompat, E.New("unexpected trailing rule-set data")
+	}
+	if err == io.EOF {
+		err = nil
 	}
 	return
 }
