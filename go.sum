@@ -94,6 +94,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dblohm7/wingoes v0.0.0-20240119213807-a09d6be7affa h1:h8TfIT1xc8FWbwwpmHn1J5i43Y0uZP97GqasGCzSRJk=
 github.com/dblohm7/wingoes v0.0.0-20240119213807-a09d6be7affa/go.mod h1:Nx87SkVqTKd8UtT+xu7sM/l+LgXs6c0aHrlKusR+2EQ=
+github.com/deposist/sing-openvpn v0.0.1-deposist.1 h1:huTc8UttXt5UhHZNVDeXjHpHRDRdmIJLUHvzGGuDUtU=
+github.com/deposist/sing-openvpn v0.0.1-deposist.1/go.mod h1:PWX7WygD8jpwfqfaGNySXpJYTn0SOwjBI1BKHHC2+Bw=
 github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1 h1:CaO/zOnF8VvUfEbhRatPcwKVWamvbYd8tQGRWacE9kU=
 github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1/go.mod h1:+hnT3ywWDTAFrW5aE+u2Sa/wT555ZqwoCS+pk3p6ry4=
 github.com/dgryski/go-camellia v0.0.0-20191119043421-69a8a13fb23d h1:CPqTNIigGweVPT4CYb+OO2E6XyRKFOmvTHwWRLgCAlE=
@@ -477,8 +479,6 @@ github.com/sagernet/sing-cloudflared v0.1.3-0.20260706062323-d9787e794aa3 h1:3y6
 github.com/sagernet/sing-cloudflared v0.1.3-0.20260706062323-d9787e794aa3/go.mod h1:XEqEDYRCAYLaoPjZ1ifVWJg5iWAJHL2gOAXe/PM28Cg=
 github.com/sagernet/sing-openconnect v0.0.0-20260810065514-53aa8058f8df h1:ogyC7KPTWueN7kXFhKSdHeS5/t/zBjQgAOpWjqnrMos=
 github.com/sagernet/sing-openconnect v0.0.0-20260810065514-53aa8058f8df/go.mod h1:4AKZLVcvY3r54UaK2Gbnm7aN8pOwdLz+y4EP0QFZ5Eg=
-github.com/sagernet/sing-openvpn v0.0.0-20260729104525-103eb5fe5eb6 h1:ZAvhkor0prJ8KEX9EmTEH+gJ1WlA3ffjS8GZT6KKq9c=
-github.com/sagernet/sing-openvpn v0.0.0-20260729104525-103eb5fe5eb6/go.mod h1:PWX7WygD8jpwfqfaGNySXpJYTn0SOwjBI1BKHHC2+Bw=
 github.com/sagernet/sing-quic v0.7.0-beta.4 h1:frzDiZqUbT0yLVaVfgaLtoVQ/zGa3xIsDTHP+aSM/W8=
 github.com/sagernet/sing-quic v0.7.0-beta.4/go.mod h1:rJFeVxbEej2iuyeCJ3drKW+p5rOgtLIW3XhZ6ty7Fig=
 github.com/sagernet/sing-shadowsocks v0.2.8 h1:PURj5PRoAkqeHh2ZW205RWzN9E9RtKCVCzByXruQWfE=
@@ -505,8 +505,6 @@ github.com/shtorm-7/go-cache/v2 v2.1.0-extended-1.2.0 h1:aOd9Vy2LGSwgMM+4805AgLB
 github.com/shtorm-7/go-cache/v2 v2.1.0-extended-1.2.0/go.mod h1:Ek4yz5OK6stwhLKgLsRRYDI+FA+ZWvRJiWLjsi/vMM4=
 github.com/shtorm-7/mtg-multi v1.11.0-extended-1.0.0 h1:iBLll4ZZG8ULQcHWs6gGslZWtBN72Zo1zjySzMVHF7g=
 github.com/shtorm-7/mtg-multi v1.11.0-extended-1.0.0/go.mod h1:3rvdhwdPABkwKBdvgMt3VwMn9uSq8hpoHRezZ5jRJU0=
-github.com/shtorm-7/rmux v1.0.0 h1:oNXshcZVUEDU9u5ylqh3VBFQwus5LFH5yZD9KMTkSSw=
-github.com/shtorm-7/rmux v1.0.0/go.mod h1:6tVwUpgjMcCTi3iami7le2/rqhfR6aFPhwuyFzGNQcw=
 github.com/shtorm-7/rmux v1.0.1 h1:ES3/MEQIXG1FR/Lb70M1YFP8eHTPQ99OjPLkutGbLF4=
 github.com/shtorm-7/rmux v1.0.1/go.mod h1:6tVwUpgjMcCTi3iami7le2/rqhfR6aFPhwuyFzGNQcw=
 github.com/shtorm-7/sing v0.9.0-beta.4-extended-1.2.1 h1:wpPAKAhHdipRcA4wWtHF16JIrObOTCg9a1O7uowAumg=
@@ -517,8 +515,6 @@ github.com/shtorm-7/sing-vmess v0.2.8-extended-1.0.0 h1:OjvqZOhYSi9eIJGYC0iPDPqv
 github.com/shtorm-7/sing-vmess v0.2.8-extended-1.0.0/go.mod h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=
 github.com/shtorm-7/tailscale v1.102.1-sing-box-1.14-mod.4-extended-1.0.3 h1:AG4leaIK/VByNXDCPtxtBjLc1orPAtBBNcfw+rebPno=
 github.com/shtorm-7/tailscale v1.102.1-sing-box-1.14-mod.4-extended-1.0.3/go.mod h1:+1R9TnmCDbxb7h7ZOBKxi5UI6aWf+polOO/fc0WB/4o=
-github.com/shtorm-7/wireguard-go v0.0.5-extended-1.6.0 h1:cLCyRR5mVNuhR6iNkcDHItt0SZ6O1GYWfP86XmVmjUo=
-github.com/shtorm-7/wireguard-go v0.0.5-extended-1.6.0/go.mod h1:1VZmkU7yPAZVE0XKufUqqAhEY1RnWUcyZLmry85y+7A=
 github.com/shtorm-7/wireguard-go v0.0.5-extended-1.6.1 h1:lLd8c5SNbm01idBlaSc18Urn4i4/ME/Umu8BeQLJ/io=
 github.com/shtorm-7/wireguard-go v0.0.5-extended-1.6.1/go.mod h1:1VZmkU7yPAZVE0XKufUqqAhEY1RnWUcyZLmry85y+7A=
 github.com/shtorm-7/workerpool v0.5.0 h1:NPZuNgyH0EUm4aQsTL09xR1iV+7GCFw6jX9Z4aAVp2s=

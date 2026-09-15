@@ -317,6 +317,20 @@ func (e *Endpoint) Close() error {
 	return e.tunDevice.Close()
 }
 
+func (e *Endpoint) IpcGet() (string, error) {
+	if e.device == nil {
+		return "", E.New("wireguard device is not started")
+	}
+	return e.device.IpcGet()
+}
+
+func (e *Endpoint) IpcSet(config string) error {
+	if e.device == nil {
+		return E.New("wireguard device is not started")
+	}
+	return e.device.IpcSet(config)
+}
+
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {
 	if e.allowedIPs == nil {
 		return nil

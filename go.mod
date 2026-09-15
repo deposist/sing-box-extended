@@ -288,3 +288,5 @@ replace github.com/shtorm-7/go-cache/v2 => github.com/shtorm-7/go-cache/v2 v2.1.
 replace github.com/sagernet/sing => github.com/shtorm-7/sing v0.9.0-beta.4-extended-1.2.1
 
 replace github.com/sagernet/sing-mux => github.com/shtorm-7/sing-mux v0.3.5-extended-1.0.0
+
+replace github.com/sagernet/sing-openvpn => github.com/deposist/sing-openvpn v0.0.1-deposist.1

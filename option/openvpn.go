@@ -68,6 +68,7 @@ type OpenVPNClientEndpointOptions struct {
 	RenegotiatePackets   uint64                           `json:"renegotiate_packets,omitempty"`
 	TLSTimeout           badoption.Duration               `json:"tls_timeout,omitempty"`
 	HandshakeWindow      badoption.Duration               `json:"handshake_window,omitempty"`
+	ReconnectDelay       badoption.Duration               `json:"reconnect_delay,omitempty"`
 	ExplicitExitNotify   uint32                           `json:"explicit_exit_notify,omitempty"`
 	UDPTimeout           UDPTimeoutCompat                 `json:"udp_timeout,omitempty"`
 }
@@ -121,7 +122,7 @@ type OpenVPNPullFilterOptions struct {
 
 type OpenVPNOutboundTLSOptions struct {
 	ServerName            string                     `json:"server_name,omitempty"`
-	ServerNameType        string                     `json:"server_name_type,omitempty" enum:"subject,name,name-prefix"`
+	ServerNameType        string                     `json:"server_name_type,omitempty" enum:"subject,name,name-prefix,name-suffix"`
 	Certificate           badoption.Listable[string] `json:"certificate,omitempty"`
 	CertificatePath       string                     `json:"certificate_path,omitempty"`
 	ClientCertificate     badoption.Listable[string] `json:"client_certificate,omitempty"`

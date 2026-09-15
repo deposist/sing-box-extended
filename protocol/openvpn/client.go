@@ -472,6 +472,7 @@ func buildClientTimingOptions(options option.OpenVPNClientEndpointOptions) ovpn.
 		PingRestartDisabled:   options.PingRestartDisabled,
 		TLSTimeout:            time.Duration(options.TLSTimeout),
 		HandWindow:            time.Duration(options.HandshakeWindow),
+		ReconnectDelay:        time.Duration(options.ReconnectDelay),
 	}
 }
 
