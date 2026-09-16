@@ -4,9 +4,6 @@ import (
 	"context"
 	"net"
 
-	"github.com/dolonet/mtg-multi/antireplay"
-	"github.com/dolonet/mtg-multi/events"
-	"github.com/dolonet/mtg-multi/mtglib"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	"github.com/sagernet/sing-box/common/listener"
@@ -17,6 +14,10 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	N "github.com/sagernet/sing/common/network"
+
+	"github.com/dolonet/mtg-multi/antireplay"
+	"github.com/dolonet/mtg-multi/events"
+	"github.com/dolonet/mtg-multi/mtglib"
 )
 
 func RegisterInbound(registry *inbound.Registry) {
@@ -89,21 +90,21 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	return inbound, nil
 }
 
-func (n *Inbound) Start(stage adapter.StartStage) error {
+func (h *Inbound) Start(stage adapter.StartStage) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	listener, err := n.listener.ListenTCP()
+	listener, err := h.listener.ListenTCP()
 	if err != nil {
 		return err
 	}
-	go n.proxy.Serve(listener)
+	go h.proxy.Serve(listener)
 	return nil
 }
 
-func (n *Inbound) Close() error {
-	err := common.Close(&n.listener)
-	n.proxy.Shutdown()
+func (h *Inbound) Close() error {
+	err := common.Close(h.listener)
+	h.proxy.Shutdown()
 	return err
 }
 
