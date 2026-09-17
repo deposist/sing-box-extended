@@ -128,3 +128,45 @@ func TestEndpointIPCAfterCloseReturnsGuardError(t *testing.T) {
 	require.EqualError(t, err, "wireguard device is not started")
 	require.EqualError(t, endpoint.IpcSet(""), "wireguard device is not started")
 }
+
+// TestEndpointAmnezia31FlagsOnStartedDevice proves the AmneziaWG 3.1 device
+// switches reach the live UAPI: random_trailers and disable_cookies are
+// reported by IpcGet after being set through EndpointOptions, and absent
+// when the options leave them off.
+func TestEndpointAmnezia31FlagsOnStartedDevice(t *testing.T) {
+	ctx := context.Background()
+	privB64, _, _ := newTestKey(t)
+	_, peerPubB64, _ := newTestKey(t)
+
+	d, err := dialer.NewDefault(ctx, option.DialerOptions{})
+	require.NoError(t, err)
+
+	endpoint, err := NewEndpoint(EndpointOptions{
+		Context:    ctx,
+		Logger:     log.NewNOPFactory().Logger(),
+		System:     false,
+		Dialer:     d,
+		MTU:        1408,
+		Address:    []netip.Prefix{netip.MustParsePrefix("10.0.0.1/24")},
+		PrivateKey: privB64,
+		ListenPort: 0,
+		Peers: []PeerOptions{
+			{
+				PublicKey:  peerPubB64,
+				AllowedIPs: []netip.Prefix{netip.MustParsePrefix("10.0.1.0/24")},
+			},
+		},
+		Amnezia: &AmneziaOptions{
+			RandomTrailers: true,
+			DisableCookies: true,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, endpoint.Start(false))
+	defer endpoint.Close()
+
+	got, err := endpoint.IpcGet()
+	require.NoError(t, err)
+	require.Contains(t, got, "random_trailers=1")
+	require.Contains(t, got, "disable_cookies=1")
+}
