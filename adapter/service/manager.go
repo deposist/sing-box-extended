@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
-	"github.com/sagernet/sing-box/common/taskmonitor"
-	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -16,64 +14,33 @@ import (
 var _ adapter.ServiceManager = (*Manager)(nil)
 
 type Manager struct {
-	logger       log.ContextLogger
 	registry     adapter.ServiceRegistry
 	access       sync.Mutex
-	started      bool
-	stage        adapter.StartStage
+	scope        *adapter.Scope
 	services     []adapter.Service
 	serviceByTag map[string]adapter.Service
 }
 
-func NewManager(logger log.ContextLogger, registry adapter.ServiceRegistry) *Manager {
+func NewManager(registry adapter.ServiceRegistry) *Manager {
 	return &Manager{
-		logger:       logger,
 		registry:     registry,
 		serviceByTag: make(map[string]adapter.Service),
 	}
 }
 
-func (m *Manager) Start(stage adapter.StartStage) error {
+func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	m.access.Lock()
-	if m.started && m.stage >= stage {
-		panic("already started")
+	if stage == adapter.StartStateInitialize {
+		m.scope = scope
 	}
-	m.started = true
-	m.stage = stage
 	services := m.services
 	m.access.Unlock()
 	for _, service := range services {
 		name := "service/" + service.Type() + "[" + service.Tag() + "]"
-		done := adapter.LogElapsed(m.logger, stage, " ", name)
-		err := adapter.LegacyStart(service, stage)
-		done()
+		err := scope.Start(name, service, stage)
 		if err != nil {
-			return E.Cause(err, stage, " ", name)
+			return err
 		}
-	}
-	return nil
-}
-
-func (m *Manager) Close() error {
-	m.access.Lock()
-	defer m.access.Unlock()
-	if !m.started {
-		return nil
-	}
-	m.started = false
-	services := m.services
-	m.services = nil
-	monitor := taskmonitor.New(m.logger, C.StopTimeout)
-	var err error
-	for _, service := range services {
-		name := "service/" + service.Type() + "[" + service.Tag() + "]"
-		done := adapter.LogElapsed(m.logger, "close ", name)
-		monitor.Start("close ", name)
-		err = E.Append(err, service.Close(), func(err error) error {
-			return E.Cause(err, "close ", name)
-		})
-		monitor.Finish()
-		done()
 	}
 	return nil
 }
@@ -99,19 +66,15 @@ func (m *Manager) Remove(tag string) error {
 		return os.ErrInvalid
 	}
 	delete(m.serviceByTag, tag)
-	index := common.Index(m.services, func(it adapter.Service) bool {
-		return it == service
+	m.services = common.Filter(m.services, func(it adapter.Service) bool {
+		return it != service
 	})
-	if index == -1 {
-		panic("invalid service index")
-	}
-	m.services = append(m.services[:index], m.services[index+1:]...)
-	started := m.started
+	scope := m.scope
 	m.access.Unlock()
-	if started {
-		return service.Close()
+	if scope == nil {
+		return nil
 	}
-	return nil
+	return scope.Remove(service)
 }
 
 func (m *Manager) Create(ctx context.Context, logger log.ContextLogger, tag string, serviceType string, options any) error {
@@ -121,31 +84,9 @@ func (m *Manager) Create(ctx context.Context, logger log.ContextLogger, tag stri
 	}
 	m.access.Lock()
 	defer m.access.Unlock()
-	if m.started {
-		name := "service/" + service.Type() + "[" + service.Tag() + "]"
-		for _, stage := range adapter.ListStartStages {
-			done := adapter.LogElapsed(m.logger, stage, " ", name)
-			err = adapter.LegacyStart(service, stage)
-			done()
-			if err != nil {
-				return E.Cause(err, stage, " ", name)
-			}
-		}
-	}
-	if existsService, loaded := m.serviceByTag[tag]; loaded {
-		if m.started {
-			err = existsService.Close()
-			if err != nil {
-				return E.Cause(err, "close service/", existsService.Type(), "[", existsService.Tag(), "]")
-			}
-		}
-		existsIndex := common.Index(m.services, func(it adapter.Service) bool {
-			return it == existsService
-		})
-		if existsIndex == -1 {
-			panic("invalid service index")
-		}
-		m.services = append(m.services[:existsIndex], m.services[existsIndex+1:]...)
+	_, loaded := m.serviceByTag[tag]
+	if loaded {
+		return E.New("duplicate service tag: ", tag)
 	}
 	m.services = append(m.services, service)
 	m.serviceByTag[tag] = service

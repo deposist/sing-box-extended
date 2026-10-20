@@ -47,7 +47,9 @@ func TestInboundCloseReleasesListenerAndConnections(t *testing.T) {
 		t.Fatal(err)
 	}
 	n := inbound.(*Inbound)
-	if err := n.Start(adapter.StartStateStart); err != nil {
+	scope := adapter.NewScope(context.Background(), logger)
+	t.Cleanup(func() { _ = scope.Close() })
+	if err := scope.Start("mtproxy", n, adapter.StartStateStart); err != nil {
 		t.Fatal(err)
 	}
 	listener := n.listener.TCPListener()
@@ -65,7 +67,7 @@ func TestInboundCloseReleasesListenerAndConnections(t *testing.T) {
 	}
 
 	closed := make(chan error, 1)
-	go func() { closed <- n.Close() }()
+	go func() { closed <- scope.Close() }()
 	select {
 	case err := <-closed:
 		if err != nil {
