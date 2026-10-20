@@ -15,8 +15,10 @@ var _ adapter.EndpointManager = (*Manager)(nil)
 
 type Manager struct {
 	registry      adapter.EndpointRegistry
+	startAccess   sync.Mutex
 	access        sync.Mutex
 	scope         *adapter.Scope
+	stage         adapter.StartStage
 	endpoints     []adapter.Endpoint
 	endpointByTag map[string]adapter.Endpoint
 }
@@ -29,10 +31,11 @@ func NewManager(registry adapter.EndpointRegistry) *Manager {
 }
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	m.startAccess.Lock()
+	defer m.startAccess.Unlock()
 	m.access.Lock()
-	if stage == adapter.StartStateInitialize {
-		m.scope = scope
-	}
+	m.scope = scope
+	m.stage = stage
 	if stage == adapter.StartStateStart {
 		m.access.Unlock()
 		return nil
@@ -90,6 +93,21 @@ func (m *Manager) Create(ctx context.Context, router adapter.Router, logger log.
 	if err != nil {
 		return err
 	}
+	m.startAccess.Lock()
+	m.access.Lock()
+	scope := m.scope
+	stage := m.stage
+	m.access.Unlock()
+	if scope != nil {
+		name := "endpoint/" + endpoint.Type() + "[" + endpoint.Tag() + "]"
+		for _, startStage := range adapter.ListStartStages[:stage+1] {
+			if err = scope.Start(name, endpoint, startStage); err != nil {
+				m.startAccess.Unlock()
+				return E.Errors(err, scope.Remove(endpoint))
+			}
+		}
+	}
+	m.startAccess.Unlock()
 	m.access.Lock()
 	defer m.access.Unlock()
 	_, loaded := m.endpointByTag[tag]

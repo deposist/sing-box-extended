@@ -15,8 +15,10 @@ var _ adapter.ServiceManager = (*Manager)(nil)
 
 type Manager struct {
 	registry     adapter.ServiceRegistry
+	startAccess  sync.Mutex
 	access       sync.Mutex
 	scope        *adapter.Scope
+	stage        adapter.StartStage
 	services     []adapter.Service
 	serviceByTag map[string]adapter.Service
 }
@@ -29,10 +31,11 @@ func NewManager(registry adapter.ServiceRegistry) *Manager {
 }
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	m.startAccess.Lock()
+	defer m.startAccess.Unlock()
 	m.access.Lock()
-	if stage == adapter.StartStateInitialize {
-		m.scope = scope
-	}
+	m.scope = scope
+	m.stage = stage
 	services := m.services
 	m.access.Unlock()
 	for _, service := range services {
@@ -82,6 +85,21 @@ func (m *Manager) Create(ctx context.Context, logger log.ContextLogger, tag stri
 	if err != nil {
 		return err
 	}
+	m.startAccess.Lock()
+	m.access.Lock()
+	scope := m.scope
+	stage := m.stage
+	m.access.Unlock()
+	if scope != nil {
+		name := "service/" + service.Type() + "[" + service.Tag() + "]"
+		for _, startStage := range adapter.ListStartStages[:stage+1] {
+			if err = scope.Start(name, service, startStage); err != nil {
+				m.startAccess.Unlock()
+				return E.Errors(err, scope.Remove(service))
+			}
+		}
+	}
+	m.startAccess.Unlock()
 	m.access.Lock()
 	defer m.access.Unlock()
 	_, loaded := m.serviceByTag[tag]

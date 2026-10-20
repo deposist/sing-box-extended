@@ -16,8 +16,10 @@ var _ adapter.InboundManager = (*Manager)(nil)
 type Manager struct {
 	registry     adapter.InboundRegistry
 	endpoint     adapter.EndpointManager
+	startAccess  sync.Mutex
 	access       sync.Mutex
 	scope        *adapter.Scope
+	stage        adapter.StartStage
 	inbounds     []adapter.Inbound
 	inboundByTag map[string]adapter.Inbound
 }
@@ -31,10 +33,11 @@ func NewManager(registry adapter.InboundRegistry, endpoint adapter.EndpointManag
 }
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	m.startAccess.Lock()
+	defer m.startAccess.Unlock()
 	m.access.Lock()
-	if stage == adapter.StartStateInitialize {
-		m.scope = scope
-	}
+	m.scope = scope
+	m.stage = stage
 	inbounds := m.inbounds
 	m.access.Unlock()
 	for _, inbound := range inbounds {
@@ -87,6 +90,21 @@ func (m *Manager) Create(ctx context.Context, router adapter.Router, logger log.
 	if err != nil {
 		return err
 	}
+	m.startAccess.Lock()
+	m.access.Lock()
+	scope := m.scope
+	stage := m.stage
+	m.access.Unlock()
+	if scope != nil {
+		name := "inbound/" + inbound.Type() + "[" + inbound.Tag() + "]"
+		for _, startStage := range adapter.ListStartStages[:stage+1] {
+			if err = scope.Start(name, inbound, startStage); err != nil {
+				m.startAccess.Unlock()
+				return E.Errors(err, scope.Remove(inbound))
+			}
+		}
+	}
+	m.startAccess.Unlock()
 	m.access.Lock()
 	defer m.access.Unlock()
 	_, loaded := m.inboundByTag[tag]
