@@ -13,6 +13,7 @@ import (
 	"github.com/sagernet/sing-box/service/node/constant"
 	"github.com/sagernet/sing-box/service/node/inbound"
 	"github.com/sagernet/sing-box/service/node/limiter"
+	pb "github.com/sagernet/sing-box/service/node_manager_api/manager"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service"
 )
@@ -140,7 +141,41 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return err
 		}
 	}
+	if announcer, ok := nodeManager.(interface{ SetHello(*pb.NodeHello) }); ok {
+		announcer.SetHello(s.buildHello())
+	}
 	return nodeManager.AddNode(s.options.UUID, s)
+}
+
+// NodeHelloProtocolVersion is the self-description format this build speaks.
+// A manager that does not understand the newest version can still fall back to
+// the plain uuid handshake, because hello is additive.
+const NodeHelloProtocolVersion = 1
+
+func (s *Service) buildHello() *pb.NodeHello {
+	hello := &pb.NodeHello{
+		ProtocolVersion: NodeHelloProtocolVersion,
+		CoreVersion:     C.Version,
+	}
+	inboundTypes := make(map[string]string, len(s.options.Inbounds))
+	for type_, manager := range s.inboundManagers {
+		for _, tag := range manager.GetUserManagerTags() {
+			inboundTypes[tag] = type_
+		}
+	}
+	for _, tag := range s.options.Inbounds {
+		hello.Inbounds = append(hello.Inbounds, &pb.NodeInbound{Tag: tag, Type: inboundTypes[tag]})
+	}
+	appendLimiters := func(variant string, tags []string) {
+		for _, tag := range tags {
+			hello.Limiters = append(hello.Limiters, &pb.NodeLimiter{Tag: tag, Type: variant, Variant: variant})
+		}
+	}
+	appendLimiters(C.TypeBandwidthLimiter, s.bandwidthManager.GetBandwidthLimiterStrategyManagerTags())
+	appendLimiters(C.TypeConnectionLimiter, s.connectionManager.GetConnectionLimiterStrategyManagerTags())
+	appendLimiters(C.TypeTrafficLimiter, s.trafficManager.GetTrafficLimiterStrategyManagerTags())
+	appendLimiters(C.TypeRateLimiter, s.rateManager.GetRateLimiterStrategyManagerTags())
+	return hello
 }
 
 func (s *Service) UpdateUser(user CM.User) {
@@ -157,28 +192,44 @@ func (s *Service) UpdateUser(user CM.User) {
 	userManager.UpdateUser(user)
 }
 
+// UpdateUsers applies a full snapshot. Users are grouped by their inbound tag,
+// not by protocol type: an inbound must only ever see the users assigned to it.
+// Grouping by type handed every inbound of the same protocol the whole list,
+// which leaked users into inbounds they were never assigned to.
+//
+// Per-inbound UpdateUsers replaces the manager's set, so a user absent from the
+// snapshot is dropped - including one deleted while this node was offline.
 func (s *Service) UpdateUsers(users []CM.User) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	typedUsers := make(map[string][]CM.User)
+	byInbound := make(map[string][]CM.User)
 	for _, user := range users {
-		u, ok := typedUsers[user.Type]
-		if !ok {
-			typedUsers[user.Type] = make([]CM.User, 0)
-		}
-		typedUsers[user.Type] = append(u, user)
+		byInbound[user.Inbound] = append(byInbound[user.Inbound], user)
 	}
-	for type_, users := range typedUsers {
-		manager, ok := s.inboundManagers[type_]
+	seen := make(map[string]struct{}, len(byInbound))
+	for inboundTag, inboundUsers := range byInbound {
+		seen[inboundTag] = struct{}{}
+		manager, ok := s.inboundManagers[inboundUsers[0].Type]
 		if !ok {
 			continue
 		}
-		for _, user := range users {
-			userManager, ok := manager.GetUserManager(user.Inbound)
+		userManager, ok := manager.GetUserManager(inboundTag)
+		if !ok {
+			continue
+		}
+		userManager.UpdateUsers(inboundUsers)
+	}
+	// An inbound that received no users in this snapshot is empty.
+	for _, manager := range s.inboundManagers {
+		for _, tag := range manager.GetUserManagerTags() {
+			if _, ok := seen[tag]; ok {
+				continue
+			}
+			userManager, ok := manager.GetUserManager(tag)
 			if !ok {
 				continue
 			}
-			userManager.UpdateUsers(users)
+			userManager.UpdateUsers(nil)
 		}
 	}
 }

@@ -40,6 +40,10 @@ type Service struct {
 	limiterLocks map[int]map[string]*cache.Cache[string, struct{}]
 	trafficUsage map[int]*TrafficUsage
 
+	// nodeHellos keeps the last self-description each node announced. It is
+	// in memory only: a restart clears it and the next connect repopulates it.
+	nodeHellos map[string]constant.NodeHello
+
 	defaultValidator *validator.Validate
 
 	broadcastQueue wpconstant.Queue
@@ -132,6 +136,7 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 		nodes:            make(map[string]constant.ConnectedNode, 0),
 		limiterLocks:     make(map[int]map[string]*cache.Cache[string, struct{}]),
 		trafficUsage:     make(map[int]*TrafficUsage),
+		nodeHellos:       make(map[string]constant.NodeHello),
 		defaultValidator: defaultValidator,
 		broadcastQueue:   broadcastQueue,
 		broadcastPool:    broadcastPool,
@@ -771,6 +776,26 @@ func (s *Service) DeleteRateLimiter(id int) (constant.RateLimiter, error) {
 		node.DeleteRateLimiter(deletedLimiter)
 	})
 	return deletedLimiter, nil
+}
+
+// SetNodeHello records the self-description sent by the node with this uuid.
+// An empty hello (an older node) clears any previous record.
+func (s *Service) SetNodeHello(uuid string, hello constant.NodeHello) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	if len(hello.Inbounds) == 0 && len(hello.Limiters) == 0 && hello.ProtocolVersion == 0 {
+		delete(s.nodeHellos, uuid)
+		return
+	}
+	s.nodeHellos[uuid] = hello
+}
+
+// GetNodeHello returns the last self-description for a node, if any.
+func (s *Service) GetNodeHello(uuid string) (constant.NodeHello, bool) {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	hello, ok := s.nodeHellos[uuid]
+	return hello, ok
 }
 
 func (s *Service) AddNode(uuid string, node constant.ConnectedNode) error {

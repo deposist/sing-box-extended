@@ -14,6 +14,32 @@ service Manager {
 
 message Node {
   string uuid = 1;
+  NodeHello hello = 2;
+}
+
+// NodeHello is sent once when a node connects. It carries the node's
+// self-description so the manager can validate dispatch targets without
+// any extra round trip. All fields are additive: an old node simply
+// leaves hello unset and an old manager ignores the field.
+message NodeHello {
+  uint32 protocol_version = 1;
+  string core_version = 2;
+  repeated NodeInbound inbounds = 3;
+  repeated NodeLimiter limiters = 4;
+}
+
+// NodeInbound is one inbound whose users this node accepts from the manager.
+message NodeInbound {
+  string tag = 1;
+  string type = 2;
+}
+
+// NodeLimiter is one limiter outbound the node exposes to the manager.
+// variant is the limiter kind: bandwidth, connection, traffic or rate.
+message NodeLimiter {
+  string tag = 1;
+  string type = 2;
+  string variant = 3;
 }
 
 enum OpType {

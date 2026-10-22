@@ -36,7 +36,8 @@ type APIClient struct {
 	creds   credentials.TransportCredentials
 	options option.NodeManagerAPIClientOptions
 
-	conn *grpc.ClientConn
+	conn  *grpc.ClientConn
+	hello *pb.NodeHello
 
 	mtx sync.Mutex
 }
@@ -67,6 +68,15 @@ func NewAPIClient(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}, nil
 }
 
+// SetHello stores the node self-description that is attached to every
+// connection attempt. It is optional: when unset the node announces only
+// its uuid, which older managers accept.
+func (s *APIClient) SetHello(hello *pb.NodeHello) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	s.hello = hello
+}
+
 func (s *APIClient) AddNode(uuid string, node CM.ConnectedNode) error {
 	go func() {
 		isRetry := false
@@ -92,7 +102,10 @@ func (s *APIClient) AddNode(uuid string, node CM.ConnectedNode) error {
 				continue
 			}
 			client := pb.NewManagerClient(conn)
-			stream, err := client.AddNode(s.ctx, &pb.Node{Uuid: uuid})
+			s.mtx.Lock()
+			hello := s.hello
+			s.mtx.Unlock()
+			stream, err := client.AddNode(s.ctx, &pb.Node{Uuid: uuid, Hello: hello})
 			if err != nil {
 				s.logger.Error(err)
 				continue

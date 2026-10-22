@@ -62,7 +62,16 @@ func NewAPIServer(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}, nil
 }
 
+// helloSetter is implemented by managers that accept a node self-description.
+// It is optional so a manager built without the feature keeps working.
+type helloSetter interface {
+	SetNodeHello(uuid string, hello CM.NodeHello)
+}
+
 func (s *APIServer) AddNode(node *pb.Node, stream grpc.ServerStreamingServer[pb.NodeData]) error {
+	if setter, ok := s.manager.(helloSetter); ok {
+		setter.SetNodeHello(node.Uuid, convertHello(node.Hello))
+	}
 	remoteNode, errChan := NewRemoteNode(s.ctx, s.logger, stream)
 	err := s.manager.AddNode(node.Uuid, remoteNode)
 	if err != nil {
