@@ -19,7 +19,11 @@ func convertHello(hello *pb.NodeHello) CM.NodeHello {
 	if inbounds := hello.GetInbounds(); len(inbounds) > 0 {
 		converted.Inbounds = make([]CM.NodeHelloInbound, len(inbounds))
 		for i, inbound := range inbounds {
-			converted.Inbounds[i] = CM.NodeHelloInbound{Tag: inbound.GetTag(), Type: inbound.GetType()}
+			converted.Inbounds[i] = CM.NodeHelloInbound{
+				Tag:        inbound.GetTag(),
+				Type:       inbound.GetType(),
+				Descriptor: inbound.GetLinkDescriptor(),
+			}
 		}
 	}
 	if limiters := hello.GetLimiters(); len(limiters) > 0 {

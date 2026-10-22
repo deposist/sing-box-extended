@@ -36,6 +36,8 @@ type Service struct {
 
 	nodeManager CM.NodeManager
 
+	helloProvider func() *pb.NodeHello
+
 	mtx sync.Mutex
 }
 
@@ -142,7 +144,7 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		}
 	}
 	if announcer, ok := nodeManager.(interface{ SetHello(*pb.NodeHello) }); ok {
-		announcer.SetHello(s.buildHello())
+		announcer.SetHello(s.Hello())
 	}
 	return nodeManager.AddNode(s.options.UUID, s)
 }
@@ -151,6 +153,28 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 // A manager that does not understand the newest version can still fall back to
 // the plain uuid handshake, because hello is additive.
 const NodeHelloProtocolVersion = 1
+
+// SetHelloProvider installs a function that produces the node self-description
+// instead of the built-in one. An embedding application (a panel) knows the link
+// format of its inbounds and can therefore fill each inbound's opaque
+// descriptor, which the core itself cannot. The provider runs on every connect.
+func (s *Service) SetHelloProvider(provider func() *pb.NodeHello) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	s.helloProvider = provider
+}
+
+// Hello returns the self-description this node announces: the provider's when
+// one is installed, the built-in inventory otherwise.
+func (s *Service) Hello() *pb.NodeHello {
+	s.mtx.Lock()
+	provider := s.helloProvider
+	s.mtx.Unlock()
+	if provider != nil {
+		return provider()
+	}
+	return s.buildHello()
+}
 
 func (s *Service) buildHello() *pb.NodeHello {
 	hello := &pb.NodeHello{

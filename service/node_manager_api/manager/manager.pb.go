@@ -231,12 +231,18 @@ func (x *NodeHello) GetLimiters() []*NodeLimiter {
 }
 
 // NodeInbound is one inbound whose users this node accepts from the manager.
+//
+// link_descriptor is an opaque, node-defined blob describing how to build a
+// client link for this inbound (addresses, port, TLS material). The core never
+// reads it: it is stored and forwarded so a controller can assemble a
+// subscription that covers this node. Only the embedding panel knows the format.
 type NodeInbound struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tag           string                 `protobuf:"bytes,1,opt,name=tag,proto3" json:"tag,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Tag            string                 `protobuf:"bytes,1,opt,name=tag,proto3" json:"tag,omitempty"`
+	Type           string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	LinkDescriptor string                 `protobuf:"bytes,3,opt,name=link_descriptor,json=linkDescriptor,proto3" json:"link_descriptor,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *NodeInbound) Reset() {
@@ -279,6 +285,13 @@ func (x *NodeInbound) GetTag() string {
 func (x *NodeInbound) GetType() string {
 	if x != nil {
 		return x.Type
+	}
+	return ""
+}
+
+func (x *NodeInbound) GetLinkDescriptor() string {
+	if x != nil {
+		return x.LinkDescriptor
 	}
 	return ""
 }
@@ -1547,10 +1560,11 @@ const file_service_node_manager_api_manager_manager_proto_rawDesc = "" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12!\n" +
 	"\fcore_version\x18\x02 \x01(\tR\vcoreVersion\x12<\n" +
 	"\binbounds\x18\x03 \x03(\v2 .node_manager_api.v1.NodeInboundR\binbounds\x12<\n" +
-	"\blimiters\x18\x04 \x03(\v2 .node_manager_api.v1.NodeLimiterR\blimiters\"3\n" +
+	"\blimiters\x18\x04 \x03(\v2 .node_manager_api.v1.NodeLimiterR\blimiters\"\\\n" +
 	"\vNodeInbound\x12\x10\n" +
 	"\x03tag\x18\x01 \x01(\tR\x03tag\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"M\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12'\n" +
+	"\x0flink_descriptor\x18\x03 \x01(\tR\x0elinkDescriptor\"M\n" +
 	"\vNodeLimiter\x12\x10\n" +
 	"\x03tag\x18\x01 \x01(\tR\x03tag\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +

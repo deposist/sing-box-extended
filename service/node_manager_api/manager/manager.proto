@@ -29,9 +29,15 @@ message NodeHello {
 }
 
 // NodeInbound is one inbound whose users this node accepts from the manager.
+//
+// link_descriptor is an opaque, node-defined blob describing how to build a
+// client link for this inbound (addresses, port, TLS material). The core never
+// reads it: it is stored and forwarded so a controller can assemble a
+// subscription that covers this node. Only the embedding panel knows the format.
 message NodeInbound {
   string tag = 1;
   string type = 2;
+  string link_descriptor = 3;
 }
 
 // NodeLimiter is one limiter outbound the node exposes to the manager.
