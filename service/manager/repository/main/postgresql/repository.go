@@ -39,6 +39,13 @@ func NewPostgreSQLRepository(ctx context.Context, dsn string) (*PostgreSQLReposi
 	return &PostgreSQLRepository{db: pool, ctx: ctx}, nil
 }
 
+// Close releases the pool. The manager owns the repository for the lifetime of
+// its service; without this the pool leaks on every core restart.
+func (r *PostgreSQLRepository) Close() error {
+	r.db.Close()
+	return nil
+}
+
 func notFoundErr(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return constant.ErrNotFound

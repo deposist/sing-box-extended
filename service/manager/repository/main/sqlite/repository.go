@@ -34,6 +34,13 @@ func NewSQLiteRepository(ctx context.Context, dsn string) (*SQLiteRepository, er
 	return &SQLiteRepository{db: db, ctx: ctx}, nil
 }
 
+// Close releases the underlying database handle. The manager owns the
+// repository for the lifetime of its service; without this the handle leaks on
+// every core restart and on Windows keeps fleet.db locked afterwards.
+func (r *SQLiteRepository) Close() error {
+	return r.db.Close()
+}
+
 func notFoundErr(err error) error {
 	if errors.Is(err, dbsql.ErrNoRows) {
 		return constant.ErrNotFound

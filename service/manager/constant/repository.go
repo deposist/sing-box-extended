@@ -1,5 +1,11 @@
 package constant
 
+// RepositoryCloser is implemented by repositories that own an external handle
+// (a database file or a pool) and must release it when the manager service stops.
+type RepositoryCloser interface {
+	Close() error
+}
+
 type Repository interface {
 	CreateSquad(user SquadCreate) (Squad, error)
 	GetSquads(filters map[string][]string) ([]Squad, error)

@@ -940,6 +940,12 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	scope.Add(func() error {
 		s.broadcastPool.Stop()
+		s.mtx.Lock()
+		s.closeAllNodes()
+		s.mtx.Unlock()
+		if closer, ok := s.repository.(constant.RepositoryCloser); ok {
+			return closer.Close()
+		}
 		return nil
 	})
 	return nil
