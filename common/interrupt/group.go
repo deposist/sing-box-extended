@@ -24,6 +24,17 @@ func NewGroup() *Group {
 	return &Group{}
 }
 
+func (g *Group) Add(closer io.Closer, isExternal bool) (remove func()) {
+	g.access.Lock()
+	element := g.connections.PushBack(&groupConnItem{conn: closer, isExternal: isExternal})
+	g.access.Unlock()
+	return func() {
+		g.access.Lock()
+		g.connections.Remove(element)
+		g.access.Unlock()
+	}
+}
+
 func (g *Group) NewConn(conn net.Conn, isExternal bool, isProvider bool) net.Conn {
 	g.access.Lock()
 	defer g.access.Unlock()

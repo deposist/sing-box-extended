@@ -1,20 +1,16 @@
 package multiplex
 
 import (
-	"bytes"
 	"crypto/rand"
-	"io"
+	"errors"
 	"net"
-	"sync"
 	"testing"
 	"time"
 )
 
-// TestSession_LargeTransferBackpressure verifies that a transfer larger than
-// maxQueuedBytesPerStream completes correctly: the demux loop applies
-// backpressure (cond.Wait) instead of dropping data, and the reader draining
-// the stream wakes the blocked loop without deadlock.
-func TestSession_LargeTransferBackpressure(t *testing.T) {
+// TestSession_ReceiveQueueOverflowResetsStream verifies that exceeding the
+// per-stream queue limit resets that stream instead of blocking the demux loop.
+func TestSession_ReceiveQueueOverflowResetsStream(t *testing.T) {
 	c1, c2 := net.Pipe()
 
 	client, err := NewClientSession(c1)
@@ -28,64 +24,44 @@ func TestSession_LargeTransferBackpressure(t *testing.T) {
 	defer client.Close()
 	defer server.Close()
 
-	// Payload bigger than the per-stream backpressure window (4MB).
+	clientStream, err := client.OpenStream([]byte("hello"))
+	if err != nil {
+		t.Fatalf("open stream: %v", err)
+	}
+	defer clientStream.Close()
+	accepted, openPayload, err := server.AcceptStream()
+	if err != nil {
+		t.Fatalf("accept stream: %v", err)
+	}
+	defer accepted.Close()
+	if string(openPayload) != "hello" {
+		t.Fatalf("open payload: got %q", openPayload)
+	}
+	serverStream := accepted.(*stream)
+
 	const total = 12 * 1024 * 1024
 	payload := make([]byte, total)
 	if _, err := rand.Read(payload); err != nil {
 		t.Fatalf("rand: %v", err)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	var writeErr error
+	writeDone := make(chan error, 1)
 	go func() {
-		defer wg.Done()
-		stream, err := client.OpenStream([]byte("hello"))
-		if err != nil {
-			writeErr = err
-			return
-		}
-		defer stream.Close()
-		if _, err := stream.Write(payload); err != nil {
-			writeErr = err
-			return
-		}
-		_ = stream.(interface{ CloseWrite() error }).CloseWrite()
+		_, err := clientStream.Write(payload)
+		writeDone <- err
 	}()
 
-	var got []byte
-	var readErr error
-	go func() {
-		defer wg.Done()
-		stream, openPayload, err := server.AcceptStream()
-		if err != nil {
-			readErr = err
-			return
+	deadline := time.Now().Add(5 * time.Second)
+	for !errors.Is(serverStream.closedErr(), errMuxReceiveQueueFull) {
+		if time.Now().After(deadline) {
+			t.Fatalf("stream was not reset: %v", serverStream.closedErr())
 		}
-		if string(openPayload) != "hello" {
-			readErr = io.ErrUnexpectedEOF
-			return
-		}
-		got, readErr = io.ReadAll(stream)
-	}()
-
-	done := make(chan struct{})
-	go func() { wg.Wait(); close(done) }()
+		time.Sleep(time.Millisecond)
+	}
 
 	select {
-	case <-done:
-	case <-time.After(30 * time.Second):
-		t.Fatal("transfer deadlocked (backpressure did not release)")
-	}
-
-	if writeErr != nil {
-		t.Fatalf("write: %v", writeErr)
-	}
-	if readErr != nil {
-		t.Fatalf("read: %v", readErr)
-	}
-	if !bytes.Equal(got, payload) {
-		t.Fatalf("payload mismatch: got %d bytes, want %d", len(got), len(payload))
+	case <-writeDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("write did not finish after the stream reset")
 	}
 }

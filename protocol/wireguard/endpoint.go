@@ -29,6 +29,7 @@ import (
 var (
 	_ adapter.OutboundWithPreferredRoutes = (*Endpoint)(nil)
 	_ adapter.InterfaceUpdateListener     = (*Endpoint)(nil)
+	_ adapter.OutboundWithMultiplex       = (*Endpoint)(nil)
 	_ dialer.PacketDialerWithDestination  = (*Endpoint)(nil)
 )
 
@@ -200,6 +201,10 @@ func (w *Endpoint) IpcSet(config string) error {
 		return E.New("wireguard endpoint is not initialized")
 	}
 	return w.endpoint.IpcSet(config)
+}
+
+func (w *Endpoint) MultiplexEnabled() bool {
+	return true
 }
 
 func (w *Endpoint) InterfaceUpdated(ctx context.Context) {

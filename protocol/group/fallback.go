@@ -2,6 +2,7 @@ package group
 
 import (
 	"context"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -81,6 +82,14 @@ func (s *Fallback) Now() string {
 
 func (s *Fallback) All() []string {
 	return s.tags
+}
+
+func (s *Fallback) Selected(network string) adapter.Outbound {
+	return s
+}
+
+func (s *Fallback) AttachConnection(closer io.Closer) func() {
+	return func() {}
 }
 
 func (s *Fallback) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
